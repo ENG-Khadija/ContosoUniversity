@@ -1,60 +1,54 @@
-using ContosoUniversity.Data; 
+using ContosoUniversity.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore;
+using ContosoUniversity.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
+// ≈÷«›… Œœ„«  ﬁ«⁄œ… «·»Ì«‰«  (SchoolContext)
 builder.Services.AddDbContext<SchoolContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ≈÷«›… „—‘Õ «” À‰«¡«  ’›Õ… „ÿÊ— ﬁ«⁄œ… «·»Ì«‰« 
+// ≈÷«›… ›· — √Œÿ«¡ «·„ÿÊ—Ì‰ (· Õ”Ì‰ ﬁ—«¡… √Œÿ«¡ EF)
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddControllersWithViews();
-// Add services to the container.
+// ≈÷«›… œ⁄„ MVC (Controllers with Views)
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
+
+//  ÂÌ∆… ﬁ«⁄œ… «·»Ì«‰«  ⁄‰œ »œ¡ «· ‘€Ì·
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
-        // 2. «·Õ’Ê· ⁄·Ï ”Ì«ﬁ ﬁ«⁄œ… «·»Ì«‰« 
         var context = services.GetRequiredService<SchoolContext>();
-
-        // 3.  ÿ»Ìﬁ «· ‰ﬁ·« 
-        context.Database.Migrate();
-
-        // 4.  ÂÌ∆… «·»Ì«‰«  «·√Ê·Ì…
+        // «· √ﬂœ „‰  ÿ»Ìﬁ «· —ÕÌ·«  Ê»–— «·»Ì«‰« 
+        context.Database.EnsureCreated();
         DbInitializer.Initialize(context);
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while seeding the database.");
+        logger.LogError(ex, "An error occurred creating the DB.");
     }
 }
 
-// ... »ﬁÌ… „·› Program.cs ...
-app.Run();
-
-// Configure the HTTP request pipeline.
+//  ﬂÊÌ‰ »Ì∆… «· ‘€Ì·
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
 
 app.UseAuthorization();
 
+//  ﬂÊÌ‰ «·„”«— «·«› —«÷Ì («·–Ì ÌÕ· „‘ﬂ·… 404 «·⁄«„…)
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
