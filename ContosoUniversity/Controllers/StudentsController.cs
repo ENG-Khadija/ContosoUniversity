@@ -1,7 +1,10 @@
-﻿using System;
+﻿
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ContosoUniversity.Data;
 using ContosoUniversity.Models;
@@ -17,26 +20,41 @@ namespace ContosoUniversity.Controllers
             _context = context;
         }
 
-        // GET: Students (عرض قائمة الطلاب مع دعم الترتيب والبحث)
-        public async Task<IActionResult> Index(string sortOrder, string searchString)
+        // GET: Students
+        // ميثود Index المحدثة تدعم الفرز (Sort)، التصفية (Filter)، والتقسيم إلى صفحات (Paging)
+        public async Task<IActionResult> Index(
+            string sortOrder,
+            string currentFilter,
+            string searchString,
+            int? pageNumber)
         {
-            // حفظ حالة الترتيب الحالية وقيمة البحث لتمريرها إلى الـ View
+            // حفظ حالة الفرز والتصفية الحالية في ViewData
             ViewData["CurrentSort"] = sortOrder;
             ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
             ViewData["DateSortParm"] = sortOrder == "Date" ? "date_desc" : "Date";
+
+            // إذا كان هناك بحث جديد، أعد تعيين الصفحة إلى 1
+            if (searchString != null)
+            {
+                pageNumber = 1;
+            }
+            else
+            {
+                // إذا لم يكن هناك بحث جديد، استخدم قيمة التصفية الحالية
+                searchString = currentFilter;
+            }
             ViewData["CurrentFilter"] = searchString;
 
             var students = from s in _context.Students
                            select s;
 
-            // 1. تطبيق البحث
+            // --- التصفية (Filtering) ---
             if (!String.IsNullOrEmpty(searchString))
             {
-                students = students.Where(s => s.LastName.Contains(searchString)
-                                       || s.FirstMidName.Contains(searchString));
+                students = students.Where(s => s.LastName.Contains(searchString) || s.FirstMidName.Contains(searchString));
             }
 
-            // 2. تطبيق الترتيب
+            // --- الفرز (Sorting) ---
             switch (sortOrder)
             {
                 case "name_desc":
@@ -53,10 +71,14 @@ namespace ContosoUniversity.Controllers
                     break;
             }
 
-            return View(await students.AsNoTracking().ToListAsync());
+            // --- التقسيم إلى صفحات (Paging) ---
+            int pageSize = 3; // عدد الطلاب في كل صفحة
+            // إنشاء كائن PaginatedList<Student> وإرساله إلى الـ View
+            return View(await PaginatedList<Student>.CreateAsync(
+                students.AsNoTracking(), pageNumber ?? 1, pageSize));
         }
 
-        // GET: Students/Details/5 (عرض تفاصيل طالب معين)
+        // GET: Students/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -64,13 +86,8 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            // التحميل الصريح (Eager Loading) لـ Enrollments و Courses
             var student = await _context.Students
-                .Include(s => s.Enrollments)
-                    .ThenInclude(e => e.Course)
-                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.ID == id);
-
             if (student == null)
             {
                 return NotFound();
@@ -79,13 +96,136 @@ namespace ContosoUniversity.Controllers
             return View(student);
         }
 
-        // دالة عرض نموذج إنشاء طالب جديد (سنضيف المنطق لاحقاً)
-        public IActionResult Create() { return View(); }
-        // دالة عرض نموذج تعديل بيانات طالب (سنضيف المنطق لاحقاً)
-        public IActionResult Edit(int id) { return View(); }
-        // دالة عرض نموذج حذف طالب (سنضيف المنطق لاحقاً)
-        public IActionResult Delete(int id) { return View(); }
+        // GET: Students/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
 
-        // يجب إضافة بقية دوال CRUD هنا عند كتابة الـ Views المقابلة.
+        // POST: Students/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("LastName,FirstMidName,EnrollmentDate")] Student student)
+        {
+            try
+{
+                if (ModelState.IsValid)
+                {
+                    _context.Add(student);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+            catch (DbUpdateException /* ex */)
+            {
+                //Log the error (uncomment ex variable name and write a log.)
+                ModelState.AddModelError("", "Unable to save changes. " +
+                    "Try again, and if the problem persists, " +
+                    "see your system administrator.");
+            }
+            return View(student);
+        }
+
+        // GET: Students/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var student = await _context.Students.FindAsync(id);
+            if (student == null)
+            {
+                return NotFound();
+            }
+            return View(student);
+        }
+
+        // POST: Students/Edit/5
+        [HttpPost, ActionName("Edit")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditPost(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+            var studentToUpdate = await _context.Students.FirstOrDefaultAsync(s => s.ID == id);
+            if (await TryUpdateModelAsync<Student>(
+                studentToUpdate,
+                "",
+                s => s.FirstMidName, s => s.LastName, s => s.EnrollmentDate))
+            {
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (DbUpdateException /* ex */)
+                {
+                    //Log the error (uncomment ex variable name and write a log.)
+                    ModelState.AddModelError("", "Unable to save changes. " +
+                        "Try again, and if the problem persists, " +
+                        "see your system administrator.");
+                }
+            }
+            return View(studentToUpdate);
+        }
+
+        // GET: Students/Delete/5
+        public async Task<IActionResult> Delete(int? id, bool? saveChangesError = false)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var student = await _context.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.ID == id);
+            if (student == null)
+            {
+                return NotFound();
+            }
+
+            if (saveChangesError.GetValueOrDefault())
+            {
+                ViewData["ErrorMessage"] =
+                    "Delete failed. Try again, and if the problem persists " +
+                    "see your system administrator.";
+            }
+
+            return View(student);
+        }
+
+        // POST: Students/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var student = await _context.Students.FindAsync(id);
+            if (student == null)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+
+            try
+            {
+                _context.Students.Remove(student);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            catch (DbUpdateException /* ex */)
+            {
+                //Log the error (uncomment ex variable name and write a log.)
+                return RedirectToAction(nameof(Delete), new { id = id, saveChangesError = true });
+            }
+        }
+
+        private bool StudentExists(int id)
+        {
+            return _context.Students.Any(e => e.ID == id);
+        }
     }
 }

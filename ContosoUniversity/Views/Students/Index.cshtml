@@ -1,38 +1,45 @@
-﻿@model IEnumerable<ContosoUniversity.Models.Student>
+﻿@model PaginatedList<ContosoUniversity.Models.Student>
 
 @{
-    ViewData["Title"] = "Students";
+    ViewData["Title"] = "Students Index";
 }
 
-<h2>Students</h2>
+<h2>Students Index</h2>
 
 <p>
     <a asp-action="Create">Create New</a>
 </p>
 
-<!-- نموذج البحث -->
+@* نموذج البحث والتصفية *@
 <form asp-action="Index" method="get">
     <div class="form-actions no-color">
         <p>
             Find by name: <input type="text" name="SearchString" value="@ViewData["CurrentFilter"]" />
-            <input type="submit" value="Search" class="btn btn-primary" /> |
-            <a asp-action="Index" class="btn btn-outline-secondary">Back to Full List</a>
+            <input type="submit" value="Search" class="btn btn-default" /> |
+            <a asp-action="Index">Back to Full List</a>
         </p>
     </div>
 </form>
 
-<table class="table table-hover table-striped">
+<table class="table">
     <thead>
         <tr>
-            <!-- تم دمج الاسم الأول والأخير في عمود واحد، مع بقاء الفرز على الاسم الأخير -->
+            @* رابط الفرز حسب الاسم الأخير *@
             <th>
-                <a asp-action="Index" asp-route-sortOrder="@ViewData["NameSortParm"]" asp-route-currentFilter="@ViewData["CurrentFilter"]">Full Name</a>
+                <a asp-action="Index"
+                   asp-route-sortOrder="@ViewData["NameSortParm"]"
+                   asp-route-currentFilter="@ViewData["CurrentFilter"]">Last Name</a>
             </th>
-            <!-- رابط الفرز لـ Enrollment Date -->
             <th>
-                <a asp-action="Index" asp-route-sortOrder="@ViewData["DateSortParm"]" asp-route-currentFilter="@ViewData["CurrentFilter"]">Enrollment Date</a>
+                First Name
             </th>
-            <th>Actions</th>
+            @* رابط الفرز حسب تاريخ التسجيل *@
+            <th>
+                <a asp-action="Index"
+                   asp-route-sortOrder="@ViewData["DateSortParm"]"
+                   asp-route-currentFilter="@ViewData["CurrentFilter"]">Enrollment Date</a>
+            </th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
@@ -40,18 +47,41 @@
         {
             <tr>
                 <td>
-                    <!-- عرض الاسم الكامل للطالب (FirstMidName + LastName) -->
-                    @Html.DisplayFor(modelItem => item.FirstMidName) @Html.DisplayFor(modelItem => item.LastName)
+                    @Html.DisplayFor(modelItem => item.LastName)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.FirstMidName)
                 </td>
                 <td>
                     @Html.DisplayFor(modelItem => item.EnrollmentDate)
                 </td>
                 <td>
-                    <a asp-action="Edit" asp-route-id="@item.ID" class="btn btn-sm btn-outline-info">Edit</a> |
-                    <a asp-action="Details" asp-route-id="@item.ID" class="btn btn-sm btn-outline-success">Details</a> |
-                    <a asp-action="Delete" asp-route-id="@item.ID" class="btn btn-sm btn-outline-danger">Delete</a>
+                    <a asp-action="Edit" asp-route-id="@item.ID">Edit</a> |
+                    <a asp-action="Details" asp-route-id="@item.ID">Details</a> |
+                    <a asp-action="Delete" asp-route-id="@item.ID">Delete</a>
                 </td>
             </tr>
         }
     </tbody>
 </table>
+
+@* منطق أزرار التقسيم إلى صفحات (Paging) *@
+@{
+    var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+    var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+}
+
+<a asp-action="Index"
+   asp-route-sortOrder="@ViewData["CurrentSort"]"
+   asp-route-pageNumber="@(Model.PageIndex - 1)"
+   asp-route-currentFilter="@ViewData["CurrentFilter"]"
+   class="btn btn-default @prevDisabled">
+    Previous
+</a>
+<a asp-action="Index"
+   asp-route-sortOrder="@ViewData["CurrentSort"]"
+   asp-route-pageNumber="@(Model.PageIndex + 1)"
+   asp-route-currentFilter="@ViewData["CurrentFilter"]"
+   class="btn btn-default @nextDisabled">
+    Next
+</a>
