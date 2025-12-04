@@ -1,10 +1,11 @@
-﻿@model PaginatedList<ContosoUniversity.Models.Student>
+﻿@using System.Linq;
+@model PaginatedList<ContosoUniversity.Models.Student>
 
 @{
-    ViewData["Title"] = "Students Index";
+    ViewData["Title"] = " Index";
 }
 
-<h2>Students Index</h2>
+<h2> Index</h2>
 
 <p>
     <a asp-action="Create">Create New</a>
@@ -24,20 +25,14 @@
 <table class="table">
     <thead>
         <tr>
-            @* رابط الفرز حسب الاسم الأخير *@
             <th>
-                <a asp-action="Index"
-                   asp-route-sortOrder="@ViewData["NameSortParm"]"
-                   asp-route-currentFilter="@ViewData["CurrentFilter"]">Last Name</a>
+                @Html.DisplayNameFor(model => model.First().LastName)
             </th>
             <th>
-                First Name
+                @Html.DisplayNameFor(model => model.First().FirstMidName)
             </th>
-            @* رابط الفرز حسب تاريخ التسجيل *@
             <th>
-                <a asp-action="Index"
-                   asp-route-sortOrder="@ViewData["DateSortParm"]"
-                   asp-route-currentFilter="@ViewData["CurrentFilter"]">Enrollment Date</a>
+                @Html.DisplayNameFor(model => model.First().EnrollmentDate)
             </th>
             <th></th>
         </tr>

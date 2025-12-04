@@ -1,259 +1,140 @@
-﻿
-using ContosoUniversity.Models;
-using System;
-using System.Linq;
+﻿using ContosoUniversity.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ContosoUniversity.Data
 {
-    // فئة ثابتة (Static Class) لتهيئة وبذر البيانات
     public static class DbInitializer
     {
         public static void Initialize(SchoolContext context)
         {
-            // التأكد من إنشاء قاعدة البيانات إذا لم تكن موجودة
-            context.Database.EnsureCreated();
+           
+            if (context.Courses.Any())
+            {
+                return;  
+            }
 
-            // إذا كان هناك طلاب موجودون، لا تفعل شيئًا (قاعدة البيانات مملوءة بالفعل)
-            if (context.Students.Any())
+          
+            var instructors = new Instructor[]
+            {
+                new Instructor { FirstMidName = "Kim",    LastName = "Abercrombie", HireDate = DateTime.Parse("1995-03-11") },
+                new Instructor { FirstMidName = "Fadi",   LastName = "Fakhouri",    HireDate = DateTime.Parse("2002-07-06") },
+                new Instructor { FirstMidName = "Roger",  LastName = "Kapoor",      HireDate = DateTime.Parse("2003-07-01") },
+                new Instructor { FirstMidName = "Laura",  LastName = "Zheng",       HireDate = DateTime.Parse("2003-01-01") }
+            };
+
+            foreach (Instructor i in instructors)
+            {
+                context.Instructors.Add(i);
+                context.SaveChanges();
+            }
+
+            var students = new Student[]
+            {
+                new Student { FirstMidName = "Carson",   LastName = "Alexander", EnrollmentDate = DateTime.Parse("2010-09-01") },
+                new Student { FirstMidName = "Meredith", LastName = "Alonso",    EnrollmentDate = DateTime.Parse("2012-09-01") },
+                new Student { FirstMidName = "Arturo",   LastName = "Anand",     EnrollmentDate = DateTime.Parse("2013-09-01") },
+                new Student { FirstMidName = "Gytis",    LastName = "Barzdukas", EnrollmentDate = DateTime.Parse("2012-09-01") },
+            };
+
+            foreach (Student s in students)
+            {
+                context.Students.Add(s);
+            }
+
+           
+            try
+            {
+                context.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"🛑 ERROR DURING INITIAL SAVE (Persons): {ex.InnerException?.Message ?? ex.Message}");
+                return; 
+            }
+            if(context.Departments.Any())
             {
                 return;
             }
-
-            // 1. إنشاء بيانات الطلاب
-            var students = new Student[]
+           
+            var departments = new Department[]
             {
-                new Student{FirstMidName="Carson",LastName="Alexander",EnrollmentDate=DateTime.Parse("2019-09-01")},
-                new Student{FirstMidName="Meredith",LastName="Alonso",EnrollmentDate=DateTime.Parse("2017-09-01")},
-                new Student{FirstMidName="Arturo",LastName="Anand",EnrollmentDate=DateTime.Parse("2018-09-01")},
-                new Student{FirstMidName="Gytis",LastName="Barzdukas",EnrollmentDate=DateTime.Parse("2017-09-01")},
-                new Student{FirstMidName="Yan",LastName="Li",EnrollmentDate=DateTime.Parse("2017-09-01")},
-                new Student{FirstMidName="Peggy",LastName="Justice",EnrollmentDate=DateTime.Parse("2016-09-01")},
-                new Student{FirstMidName="Laura",LastName="Norman",EnrollmentDate=DateTime.Parse("2018-09-01")},
-                new Student{FirstMidName="Nino",LastName="Olivetto",EnrollmentDate=DateTime.Parse("2019-09-01")}
-            };
-            context.Students.AddRange(students);
-            context.SaveChanges();
+                new Department
+                {
+                    Name = "English", Budget = 350000,
+                    StartDate = DateTime.Parse("2007-09-01"),
+                    InstructorID = instructors.Single(i => i.LastName == "Abercrombie").ID
 
-            // 2. إنشاء بيانات الدورات
+                },
+                new Department
+                {
+                    Name = "Mathematics", Budget = 100000,
+                    StartDate = DateTime.Parse("2007-09-01"),
+                  InstructorID = instructors.Single(i => i.LastName == "Fakhouri").ID
+                },
+                new Department
+                {
+                    Name = "Engineering", Budget = 350000,
+                    StartDate = DateTime.Parse("2007-09-01"),
+                    InstructorID = instructors.Single(i => i.LastName == "Kapoor").ID
+                },
+            };
+
+            foreach (Department d in departments)
+            {
+                context.Departments.Add(d);
+                context.SaveChanges();
+            }
             var courses = new Course[]
             {
-                new Course{CourseID=1050,Title="Chemistry",Credits=3},
-                new Course{CourseID=4022,Title="Microeconomics",Credits=3},
-                new Course{CourseID=4041,Title="Macroeconomics",Credits=3},
-                new Course{CourseID=1045,Title="Calculus",Credits=4},
-                new Course{CourseID=3141,Title="Trigonometry",Credits=4},
-                new Course{CourseID=2021,Title="Composition",Credits=3},
-                new Course{CourseID=2042,Title="Literature",Credits=4}
+              
+                new Course { CourseID = 1050, Title = "Chemistry", Credits = 3,
+                    DepartmentID = departments.Single(d => d.Name == "Engineering").DepartmentID },
+                new Course
+                {
+                   CourseID = 4022,
+                   Title = "Microeconomics",
+                   Credits = 3,
+                   DepartmentID = departments.Single(d => d.Name == "Mathematics").DepartmentID
+                },
+                new Course
+                {
+                    CourseID = 4041,
+                    Title = "Macroeconomics",
+                    Credits = 3,
+                    DepartmentID = departments.Single(d => d.Name == "Mathematics").DepartmentID
+                },
+                new Course
+                {
+                    CourseID = 1045,
+                    Title = "Calculus",
+                    Credits = 4,
+                    DepartmentID = departments.Single(d => d.Name == "Mathematics").DepartmentID
+                },
             };
-            context.Courses.AddRange(courses);
-            context.SaveChanges();
 
-            // 3. إنشاء بيانات التسجيلات (Enrollments)
+            foreach (Course c in courses)
+            {
+                context.Courses.Add(c);
+                context.SaveChanges();
+            }
+
+            
             var enrollments = new Enrollment[]
             {
-                // Carson Alexander
-                new Enrollment{StudentID=students.Single(s => s.LastName == "Alexander").ID,CourseID=courses.Single(c => c.Title == "Chemistry" ).CourseID,Grade=Grade.A},
-                new Enrollment{StudentID=students.Single(s => s.LastName == "Alexander").ID,CourseID=courses.Single(c => c.Title == "Microeconomics" ).CourseID,Grade=Grade.C},
-                new Enrollment{StudentID=students.Single(s => s.LastName == "Alexander").ID,CourseID=courses.Single(c => c.Title == "Macroeconomics" ).CourseID,Grade=Grade.B},
-                // Meredith Alonso
-                new Enrollment{StudentID=students.Single(s => s.LastName == "Alonso").ID,CourseID=courses.Single(c => c.Title == "Calculus" ).CourseID,Grade=Grade.B},
-                new Enrollment{StudentID=students.Single(s => s.LastName == "Alonso").ID,CourseID=courses.Single(c => c.Title == "Trigonometry" ).CourseID,Grade=Grade.B},
-                new Enrollment{StudentID=students.Single(s => s.LastName == "Alonso").ID,CourseID=courses.Single(c => c.Title == "Composition" ).CourseID,Grade=Grade.B},
-                // Arturo Anand
-                new Enrollment{StudentID=students.Single(s => s.LastName == "Anand").ID,CourseID=courses.Single(c => c.Title == "Chemistry" ).CourseID}, // بدون درجة
-                new Enrollment{StudentID=students.Single(s => s.LastName == "Anand").ID,CourseID=courses.Single(c => c.Title == "Microeconomics").CourseID,Grade=Grade.B},
-
-
-// Gytis Barzdukas
-                new Enrollment { StudentID = students.Single(s => s.LastName == "Barzdukas").ID, CourseID = courses.Single(c => c.Title == "Chemistry").CourseID, Grade = Grade.B },
-                // Yan Li
-                new Enrollment { StudentID = students.Single(s => s.LastName == "Li").ID, CourseID = courses.Single(c => c.Title == "Composition").CourseID, Grade = Grade.B },
-                // Peggy Justice
-                new Enrollment { StudentID = students.Single(s => s.LastName == "Justice").ID, CourseID = courses.Single(c => c.Title == "Literature").CourseID, Grade = Grade.B }
+                new Enrollment { StudentID = students.Single(s => s.LastName == "Alexander").ID, CourseID = courses.Single(c => c.Title == "Chemistry").CourseID, Grade = Grade.A },
+                new Enrollment { StudentID = students.Single(s => s.LastName == "Alexander").ID, CourseID = courses.Single(c => c.Title == "Microeconomics").CourseID, Grade = Grade.C },
+                new Enrollment { StudentID = students.Single(s => s.LastName == "Alonso").ID, CourseID = courses.Single(c => c.Title == "Calculus").CourseID, Grade = Grade.B },
+                new Enrollment { StudentID = students.Single(s => s.LastName == "Anand").ID, CourseID = courses.Single(c => c.Title == "Chemistry").CourseID, Grade = Grade.B },
             };
-        context.Enrollments.AddRange(enrollments);
-            context.SaveChanges();
+
+            foreach (Enrollment e in enrollments)
+            {
+                context.Enrollments.Add(e);
+                context.SaveChanges();
+            }
+
+
+             
         }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    }
 }

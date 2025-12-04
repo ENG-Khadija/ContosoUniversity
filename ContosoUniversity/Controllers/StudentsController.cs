@@ -1,13 +1,10 @@
-﻿
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using ContosoUniversity.Data;
 using ContosoUniversity.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ContosoUniversity.Controllers
 {
@@ -20,80 +17,65 @@ namespace ContosoUniversity.Controllers
             _context = context;
         }
 
-        // GET: Students
-        // ميثود Index المحدثة تدعم الفرز (Sort)، التصفية (Filter)، والتقسيم إلى صفحات (Paging)
+        // تم التعديل لاستخدام LINQ الديناميكي
         public async Task<IActionResult> Index(
             string sortOrder,
             string currentFilter,
             string searchString,
             int? pageNumber)
         {
-            // حفظ حالة الفرز والتصفية الحالية في ViewData
             ViewData["CurrentSort"] = sortOrder;
-            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
-            ViewData["DateSortParm"] = sortOrder == "Date" ? "date_desc" : "Date";
+            ViewData["NameSortParm"] =
+                String.IsNullOrEmpty(sortOrder) ? "LastName_desc" : "";
+            ViewData["DateSortParm"] =
+                sortOrder == "EnrollmentDate" ? "EnrollmentDate_desc" : "EnrollmentDate";
 
-            // إذا كان هناك بحث جديد، أعد تعيين الصفحة إلى 1
             if (searchString != null)
             {
                 pageNumber = 1;
             }
             else
             {
-                // إذا لم يكن هناك بحث جديد، استخدم قيمة التصفية الحالية
                 searchString = currentFilter;
             }
+
             ViewData["CurrentFilter"] = searchString;
 
             var students = from s in _context.Students
                            select s;
 
-            // --- التصفية (Filtering) ---
             if (!String.IsNullOrEmpty(searchString))
             {
-                students = students.Where(s => s.LastName.Contains(searchString) || s.FirstMidName.Contains(searchString));
+                students = students.Where(s => s.LastName.Contains(searchString)
+                                        || s.FirstMidName.Contains(searchString));
             }
 
-            // --- الفرز (Sorting) ---
-            switch (sortOrder)
+            if (string.IsNullOrEmpty(sortOrder))
             {
-                case "name_desc":
-                    students = students.OrderByDescending(s => s.LastName);
-                    break;
-                case "Date":
-                    students = students.OrderBy(s => s.EnrollmentDate);
-                    break;
-                case "date_desc":
-                    students = students.OrderByDescending(s => s.EnrollmentDate);
-                    break;
-                default:
-                    students = students.OrderBy(s => s.LastName);
-                    break;
+                sortOrder = "LastName";
             }
 
-            // --- التقسيم إلى صفحات (Paging) ---
-            int pageSize = 3; // عدد الطلاب في كل صفحة
-            // إنشاء كائن PaginatedList<Student> وإرساله إلى الـ View
-            return View(await PaginatedList<Student>.CreateAsync(
-                students.AsNoTracking(), pageNumber ?? 1, pageSize));
-        }
-
-        // GET: Students/Details/5
-        public async Task<IActionResult> Details(int? id)
-        {
-            if (id == null)
+            bool descending = false;
+            if (sortOrder.EndsWith("_desc"))
             {
-                return NotFound();
+                sortOrder = sortOrder.Substring(0, sortOrder.Length - 5);
+                descending = true;
             }
 
-            var student = await _context.Students
-                .FirstOrDefaultAsync(m => m.ID == id);
-            if (student == null)
+            if (descending)
             {
-                return NotFound();
+                // الفرز التنازلي باستخدام EF.Property
+                students = students.OrderByDescending(e => EF.Property<object>(e, sortOrder));
+            }
+            else
+            {
+                // الفرز التصاعدي باستخدام EF.Property
+                students = students.OrderBy(e => EF.Property<object>(e, sortOrder));
             }
 
-            return View(student);
+            int pageSize = 3;
+            return View(await PaginatedList<Student>.CreateAsync(students.AsNoTracking(),
+                pageNumber ?? 1, pageSize));
         }
 
         // GET: Students/Create
